@@ -1,11 +1,14 @@
 #include <iostream>
 
 #define MEM_MAX 2048
-#define BLOCK_SIZE 32
+#define BLOCKS_NUMBER 255
+#define BLOCK_SIZE 8
+#define END_OF_QUEUE 255
 
 unsigned int ctr = 0;
 
 unsigned char data[MEM_MAX];
+unsigned char free_list = 0;
 
 typedef unsigned char Q;
 
@@ -19,19 +22,44 @@ void on_illegal_operation(){
     abort();
 }
 
+unsigned char get_block(){
+    if(free_list == END_OF_QUEUE) return END_OF_QUEUE;
+    unsigned char idx = free_list;
+    auto ptr =  data + idx * BLOCK_SIZE;
+    free_list   = ptr[0];
+    ptr[0] = END_OF_QUEUE;
+    return idx;
+}
+
+void free_block(unsigned char *block){
+    block[0] = free_list;
+    free_list = (block - data) / BLOCK_SIZE;
+}
+
+void init(){
+    for(unsigned i = 0; i < BLOCKS_NUMBER-1; i++){
+        data[i * BLOCK_SIZE] = i+1;
+    }
+    data[(BLOCKS_NUMBER-1)*BLOCK_SIZE] = END_OF_QUEUE;
+    free_list = 0;
+}
+
 // Creates a FIFO byte queue, returning a handle to it.
 Q *create_queue(){
-    if(ctr == 64){
+    if(free_list == END_OF_QUEUE){
         on_out_of_memory();
     }
 
-    Q *queue = data + ctr*BLOCK_SIZE;
-    ctr++;
+    auto idx_head =  get_block();
+    auto idx_first =  get_block();
+    auto ptr =  data + idx_head * BLOCK_SIZE;
 
-    queue[0] = 0; //head
-    queue[1] = 0; //tail
+    ptr[0] = idx_first;
+    ptr[1] = 1; // head offset
+    ptr[2] = 1; // tail offset
+    ptr[3] = idx_first; // tail index for O(1) search
 
-    return queue;
+    return ptr;
 }
 
 // Destroy an earlier created byte queue.
@@ -40,11 +68,18 @@ void destroy_queue(Q *q){
         on_illegal_operation();
     }
 
-    Q *block = q;
-
-    for (unsigned i = 0; i < BLOCK_SIZE; i++) {
-        block[i] = 0;
+    auto block = data + q[0] * BLOCK_SIZE;
+    while(block != nullptr){
+        auto next = block[0];
+        free_block(block);
+        if(next == END_OF_QUEUE){
+            block = nullptr;
+        }else{
+            block = data + next * BLOCK_SIZE;
+        }
     }
+    q[0] = END_OF_QUEUE;
+    free_block(q);
 }
 
 // Adds a new byte to a queue.
@@ -53,27 +88,55 @@ void enqueue_byte(Q *q, unsigned char b){
         on_illegal_operation();
     }
 
-    auto tail = q[1];
+    auto tail_offset = q[2];
+    auto tail_ptr = data + q[3] * BLOCK_SIZE;
 
-    q[2 + tail] = b;
-    q[1]++;
+    if(tail_offset == BLOCK_SIZE){
+        auto new_block_idx = get_block();
+        if(new_block_idx == END_OF_QUEUE){
+            on_out_of_memory();
+        }
+        tail_ptr[0] = new_block_idx;
+        tail_ptr = data + new_block_idx * BLOCK_SIZE;
+        q[3] = new_block_idx;
+        q[2] = 1;
+        tail_offset = 1;
+    }
+
+    tail_ptr[tail_offset] = b;
+    q[2]++;
 }
 
 // Pops the next byte off the FIFO queue.
 unsigned char dequeue_byte(Q *q) {
-    if(!q){
+    if(!q || (q[1] == q[2] && q[0] == q[3])){
         on_illegal_operation();
     }
 
-    auto head = q[0];
-    auto popped = q[ 2 + head];
-    q[ 2 + head] = 0;
-    q[0]++;
+    auto next_ptr = data + q[0] * BLOCK_SIZE;
+    auto head_offset = q[1];
 
-    return popped;
+    auto b = next_ptr[head_offset];
+    q[1]++;
+
+    if(q[1] == BLOCK_SIZE){ // end of block
+        if(q[0] != q[3]){
+            auto next = next_ptr[0];
+            free_block(next_ptr);
+            q[0] = next;
+        }
+        q[1] = 1;
+    }
+
+    if(q[1] == q[2]){ // empty queue
+        q[1] = 1;
+    }
+
+    return b;
 }
 
 int main() {
+    init();
     std::cout << "Test:" << std::endl;
     Q *q0 = create_queue();
     enqueue_byte(q0, 0);
