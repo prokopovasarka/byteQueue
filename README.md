@@ -103,6 +103,7 @@ but it's a fair trade I had to make.
 ![Blocks](blocks.jpg)
 
 I need only 1 byte for offset bcs the maximum number is 8 (for each block). (I could store both offsets in one byte, but there is enough space in the head block to afford this)
+
 For information which block tail is the minimum size of block will be 8 (otherwise it would not make sense, I would waste a lot of data) - 2048/8 = 256
 So there will be no more than 256 blocks - which is perfect because I can save only index of block (we can get pointer easily) and 1 byte is enough.
 
@@ -144,4 +145,5 @@ is just easy swap.
 
 The challenge was to combine both: memory efficiency and performance. I started with really naive solution and tried to build on that. 
 I realised that if I want enqueue and dequeue make fast, I need to sacrifice data, but I was still trying not to store anything that would only waste memory.
+
 I am wasting data in head block, but after trying multiple solutions I decided that it's not "the end of the world", because I use most of the head block size for metadata.
