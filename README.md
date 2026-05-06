@@ -60,7 +60,7 @@ void on_illegal_operation();
 ```
 There may be spikes in the number of queues allocated, or in the size of an individual queue. Your code should not assume a maximum number of bytes in a queue (other than that imposed by the total amount of memory available, of course!) You can assume that no more than 64 queues will be created at once.
 ***
-## Explanation of solution
+## Explanation of my solution
 
 **WHAT DO WE KNOW:**
 - 64 is the maximum number of queues 
