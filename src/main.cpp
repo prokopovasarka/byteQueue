@@ -24,7 +24,7 @@ void on_illegal_operation(){
 unsigned char get_block(){
     if(FREE_LIST == END_OF_QUEUE) return END_OF_QUEUE;
     unsigned char idx = FREE_LIST;
-    auto ptr =  data + idx * BLOCK_SIZE;
+    Q* ptr =  data + idx * BLOCK_SIZE;
     FREE_LIST   = ptr[0];
     ptr[0] = END_OF_QUEUE;
     return idx;
@@ -50,9 +50,9 @@ Q *create_queue(){
         on_out_of_memory();
     }
 
-    auto idx_head =  get_block();
-    auto idx_first =  get_block();
-    auto ptr =  data + idx_head * BLOCK_SIZE;
+    unsigned char idx_head =  get_block();
+    unsigned char idx_first =  get_block();
+    Q* ptr =  data + idx_head * BLOCK_SIZE;
 
     ptr[0] = idx_first;
     ptr[1] = 1; // head offset
@@ -69,9 +69,9 @@ void destroy_queue(Q *q){
         on_illegal_operation();
     }
 
-    auto block = data + q[0] * BLOCK_SIZE;
+    Q* block = data + q[0] * BLOCK_SIZE;
     while(block != nullptr){
-        auto next = block[0];
+        unsigned char next = block[0];
         free_block(block);
         if(next == END_OF_QUEUE){
             block = nullptr;
@@ -88,15 +88,15 @@ void enqueue_byte(Q *q, unsigned char b){
         on_illegal_operation();
     }
 
-    auto tail_offset = q[2];
-    auto tail_ptr = data + q[3] * BLOCK_SIZE;
+    unsigned char tail_offset = q[2];
+    Q* tail_ptr = data + q[3] * BLOCK_SIZE;
 
     tail_ptr[tail_offset] = b;
     q[2]++;
     q[4] = 1;
 
     if(q[2] == BLOCK_SIZE){
-        auto new_block_idx = get_block();
+        unsigned char new_block_idx = get_block();
         if(new_block_idx == END_OF_QUEUE){
             on_out_of_memory();
         }
@@ -112,10 +112,10 @@ unsigned char dequeue_byte(Q *q) {
         on_illegal_operation();
     }
 
-    auto next_ptr = data + q[0] * BLOCK_SIZE;
-    auto head_offset = q[1];
+    Q* next_ptr = data + q[0] * BLOCK_SIZE;
+    unsigned char head_offset = q[1];
 
-    auto b = next_ptr[head_offset];
+    unsigned char b = next_ptr[head_offset];
     q[1]++;
 
     if(q[1] == BLOCK_SIZE){ // end of block
