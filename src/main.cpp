@@ -5,10 +5,8 @@
 #define BLOCK_SIZE 8
 #define END_OF_QUEUE 255
 
-unsigned int ctr = 0;
-
 unsigned char data[MEM_MAX];
-unsigned char free_list = 0;
+#define FREE_LIST data[MEM_MAX - 1] // start of the free list in last unused block
 
 typedef unsigned char Q;
 
@@ -24,18 +22,18 @@ void on_illegal_operation(){
 
 // Allocates block from free list
 unsigned char get_block(){
-    if(free_list == END_OF_QUEUE) return END_OF_QUEUE;
-    unsigned char idx = free_list;
+    if(FREE_LIST == END_OF_QUEUE) return END_OF_QUEUE;
+    unsigned char idx = FREE_LIST;
     auto ptr =  data + idx * BLOCK_SIZE;
-    free_list   = ptr[0];
+    FREE_LIST   = ptr[0];
     ptr[0] = END_OF_QUEUE;
     return idx;
 }
 
 // Adds block to free list
 void free_block(unsigned char *block){
-    block[0] = free_list;
-    free_list = (block - data) / BLOCK_SIZE;
+    block[0] = FREE_LIST;
+    FREE_LIST = (block - data) / BLOCK_SIZE;
 }
 
 void init(){
@@ -43,12 +41,12 @@ void init(){
         data[i * BLOCK_SIZE] = i+1;
     }
     data[(BLOCKS_NUMBER-1)*BLOCK_SIZE] = END_OF_QUEUE;
-    free_list = 0;
+    FREE_LIST = 0;
 }
 
 // Creates a FIFO byte queue, returning a handle to it.
 Q *create_queue(){
-    if(free_list == END_OF_QUEUE){
+    if(FREE_LIST == END_OF_QUEUE){
         on_out_of_memory();
     }
 
@@ -138,6 +136,7 @@ unsigned char dequeue_byte(Q *q) {
 
 int main() {
     init();
+
     std::cout << "Test:" << std::endl;
     Q *q0 = create_queue();
     enqueue_byte(q0, 0);
@@ -158,7 +157,5 @@ int main() {
     printf("%d\n", dequeue_byte(q1));
     destroy_queue(q1);
 
-
     return 0;
 }
-
