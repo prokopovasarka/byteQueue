@@ -22,6 +22,7 @@ void on_illegal_operation(){
     abort();
 }
 
+// Allocates block from free list
 unsigned char get_block(){
     if(free_list == END_OF_QUEUE) return END_OF_QUEUE;
     unsigned char idx = free_list;
@@ -31,6 +32,7 @@ unsigned char get_block(){
     return idx;
 }
 
+// Adds block to free list
 void free_block(unsigned char *block){
     block[0] = free_list;
     free_list = (block - data) / BLOCK_SIZE;
@@ -58,6 +60,7 @@ Q *create_queue(){
     ptr[1] = 1; // head offset
     ptr[2] = 1; // tail offset
     ptr[3] = idx_first; // tail index for O(1) search
+    ptr[4] = 0; // empty flag
 
     return ptr;
 }
@@ -78,7 +81,6 @@ void destroy_queue(Q *q){
             block = data + next * BLOCK_SIZE;
         }
     }
-    q[0] = END_OF_QUEUE;
     free_block(q);
 }
 
@@ -91,25 +93,24 @@ void enqueue_byte(Q *q, unsigned char b){
     auto tail_offset = q[2];
     auto tail_ptr = data + q[3] * BLOCK_SIZE;
 
-    if(tail_offset == BLOCK_SIZE){
+    tail_ptr[tail_offset] = b;
+    q[2]++;
+    q[4] = 1;
+
+    if(q[2] == BLOCK_SIZE){
         auto new_block_idx = get_block();
         if(new_block_idx == END_OF_QUEUE){
             on_out_of_memory();
         }
         tail_ptr[0] = new_block_idx;
-        tail_ptr = data + new_block_idx * BLOCK_SIZE;
         q[3] = new_block_idx;
         q[2] = 1;
-        tail_offset = 1;
     }
-
-    tail_ptr[tail_offset] = b;
-    q[2]++;
 }
 
 // Pops the next byte off the FIFO queue.
 unsigned char dequeue_byte(Q *q) {
-    if(!q || (q[1] == q[2] && q[0] == q[3])){
+    if(!q || q[4] == 0){
         on_illegal_operation();
     }
 
@@ -128,8 +129,8 @@ unsigned char dequeue_byte(Q *q) {
         q[1] = 1;
     }
 
-    if(q[1] == q[2]){ // empty queue
-        q[1] = 1;
+    if(q[1] == q[2] && q[0] == q[3]){ // empty queue
+        q[4] = 0;
     }
 
     return b;
@@ -156,5 +157,8 @@ int main() {
     printf("%d", dequeue_byte(q1));
     printf("%d\n", dequeue_byte(q1));
     destroy_queue(q1);
+
+
     return 0;
 }
+
